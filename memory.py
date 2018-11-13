@@ -2,25 +2,32 @@ import os
 import re
 
 class NoFreeBlockError(Exception):
-	def __init__(self, value):
-         self.value = value
+	def __init__(self):
+		self.value = "Não há memória livre"
 
-     def __str__(self):
-        return repr(self.value)
+	def __str__(self):
+		return repr(self.value)
 
 class BlockTooLargeError(Exception):
-	def __init__(self, value):
-         self.value = value
+	def __init__(self):
+		self.value = "Bloco muito grande"
 		 
-     def __str__(self):
-        return repr(self.value)
+	def __str__(self):
+		return repr(self.value)
 
 class FragmentationError(Exception):
-	def __init__(self, value):
-         self.value = value
+	def __init__(self):
+		self.value = "Fragmentação"
 		 
-     def __str__(self):
-        return repr(self.value)
+	def __str__(self):
+		return repr(self.value)
+
+class NoInstructionsError(Exception):
+	def __init__(self):
+		self.value = "Não há instruções"
+		 
+	def __str__(self):
+		return repr(self.value)
 
 class Block:
 	id = 0
@@ -28,66 +35,155 @@ class Block:
 	end = 0
 
 	def __init__(self, id, start, end):
-		self.id = id
-		self.start = start
-		self.end = end
+		self.id = int(id)
+		self.start = int(start)
+		self.end = int(end)
+
+	def __eq__(self, other):
+		if other == None:
+			return False
+		return self.start == other.start
+	
+	def __lt__(self, other):
+		if other == None:
+			return False
+		return self.start < other.start
+
+	def __str__(self):
+		return "B(" + str(self.id) + ", " + str(self.start) + ", " + str(self.end) + ")"
+
+	def __repr__(self):
+		return "B(" + str(self.id) + ", " + str(self.start) + ", " + str(self.end) + ")"
 
 class FreeBlock:
 	start = 0
 	end = 0
 
 	def __init__(self, start, end):
-		self.start = start
-		self.end = end
+		self.start = int(start)
+		self.end = int(end)
+
+	def __eq__(self, other):
+		if other == None:
+			return False
+		return self.start == other.start
+	
+	def __lt__(self, other):
+		if other == None:
+			return False
+		return self.start < other.start
+	
+	def __str__(self):
+		return "F(" + str(self.start) + ", " + str(self.end) + ")"
+
+	def __repr__(self):
+		return "F(" + str(self.start) + ", " + str(self.end) + ")"
 
 class MemoryManager:
 
 	mi = 0
 	mf = 0
-	free_memory = []
-	blocks = []
+	free_blocks = []
+	blocks = [None]
 	index = 0
+	free_memory = 0
 
 	def __init__(self, mi, mf):
-		self.mi = mi
-		self.mf = mf
+		self.mi = int(mi)
+		self.mf = int(mf)
 		if mi >= mf:
 			raise "Intervalo de memória inválido."
 
-		free_memory.append(FreeBlock(mi, mf))
+		self.free_blocks.append(FreeBlock(mi, mf))
+		self.free_memory = self.mf - self.mi
 
 	def count_free_memory(self):
 		free = 0
-		for block in free_memory:
+		for block in self.free_blocks:
 			free += block.end - block.start
 
 		return free
 
-	def add_block(self, start, end):
-		index += 1
-		new_block = Block(index, start, end)
+	def add_block(self, size):
+		self.index += 1
+		size = int(size)
+		
+		block_removed = None
+		start = -1
+		for free_block in self.free_blocks:
+			if free_block.end >= free_block.start + size:
+				start = free_block.start
+				block_removed = free_block
 
-		i = -1
-		for a in range(len(free_memory)):
-			if new_block.start >= free_memory[a].start:
-				i = a
-				break
-
-		if i == -1:
+		if start == -1:
 			raise NoFreeBlockError()
 
-		if new_block.end - new.block.start > count_free_memory():
-			if free_memory[i].end < new_block.end:
-				raise BlockTooLargeError()
-			else:
-				raise FragmentationError()
+		new_block = Block(self.index, start, start + size)
 
-		blocks.append(new_block)
-		block_removed = free_memory.pop(i)	
-		free_memory.append(FreeBlock(block_removed.start, new_block.start))
-		free_memory.append(FreeBlock(new_block.end, block_removed.end))
+		self.blocks.append(new_block)
+		self.free_blocks.remove(block_removed)
+		if block_removed.start < new_block.start:
+			self.free_blocks.append(FreeBlock(block_removed.start, new_block.start))
+		if new_block.end < block_removed.end:
+			self.free_blocks.append(FreeBlock(new_block.end, block_removed.end))
 		
-with open("example.txt", "r") as file:
-	regex = re.compile(r"(.*?)\s*?//.*")
+		self.sort()
+
+	def remove_block(self, id):
+		id = int(id)
+		b = None
+		for block in self.blocks[1:]:
+			if block.id == id:
+				b = block
+				self.blocks.remove(block)
+		if b != None:
+			self.free_blocks.append(FreeBlock(b.start, b.end))
+		self.sort()
+		self.optimize_free_blocks()
+		
+	def sort(self):
+		self.blocks.sort()
+		self.free_blocks.sort()
+		
+	def optimize_free_blocks(self):
+		for i in range(len(self.free_blocks) - 1):
+			if self.free_blocks[i].end == self.free_blocks[i+1].start:
+				self.free_blocks[i].end = self.free_blocks[i+1].end
+				self.free_blocks.pop(i+1)
+		
+with open("example.txt", "r", encoding="utf-8") as file:
+	line_number = 0
+	regex = re.compile(r"^([0-9]+|[SL] [0-9]+)\s*?(?://.*|$)", re.I)
+	mi = -1
+	mf = -1
+	ins = []
+
 	for line in file:
-		l = line.replace()
+		m = regex.match(line)
+		if m:
+			line_number += 1
+			l = m.group(1)
+			if line_number == 1:
+				pass
+			elif line_number == 2:
+				mi = l
+			elif line_number == 3:
+				mf = l
+			else:
+				ins.append(l)
+
+	if mi == -1 or mf == -1 or len(ins) < 1:
+		raise NoInstructionsError()
+
+	memory = MemoryManager(mi, mf)
+	for line in ins:
+		print(line)
+		command = line.split(" ")
+		if command[0] == "S":
+			memory.add_block(command[1])
+		elif command[0] == "L":
+			memory.remove_block(command[1])
+
+		print("Blocks: " + str(memory.blocks[1:]))
+		print("Free:   " + str(memory.free_blocks))
+		print()
