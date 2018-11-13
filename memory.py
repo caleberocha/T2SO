@@ -3,24 +3,17 @@ import re
 
 class NoFreeBlockError(Exception):
 	def __init__(self):
-		self.value = "Não há memória livre"
+		self.message = "Não há memória suficiente para alocar."
 
 	def __str__(self):
-		return repr(self.value)
-
-class BlockTooLargeError(Exception):
-	def __init__(self):
-		self.value = "Bloco muito grande"
-		 
-	def __str__(self):
-		return repr(self.value)
+		return repr(self.message)
 
 class FragmentationError(Exception):
 	def __init__(self):
-		self.value = "Fragmentação"
+		self.message = "Ocorreu uma fragmentação externa."
 		 
 	def __str__(self):
-		return repr(self.value)
+		return repr(self.message)
 
 class NoInstructionsError(Exception):
 	def __init__(self):
@@ -50,7 +43,8 @@ class Block:
 		return self.start < other.start
 
 	def __str__(self):
-		return "B(" + str(self.id) + ", " + str(self.start) + ", " + str(self.end) + ")"
+		#return "B(" + str(self.id) + ", " + str(self.start) + ", " + str(self.end) + ")"
+		return "{0:9s}    Bloco {1}".format(str(self.start) + "-" + str(self.end), self.id)
 
 	def __repr__(self):
 		return "B(" + str(self.id) + ", " + str(self.start) + ", " + str(self.end) + ")"
@@ -74,7 +68,8 @@ class FreeBlock:
 		return self.start < other.start
 	
 	def __str__(self):
-		return "F(" + str(self.start) + ", " + str(self.end) + ")"
+		#return "F(" + str(self.start) + ", " + str(self.end) + ")"
+		return "{0:9s}    Livre".format(str(self.start) + "-" + str(self.end))
 
 	def __repr__(self):
 		return "F(" + str(self.start) + ", " + str(self.end) + ")"
@@ -84,7 +79,7 @@ class MemoryManager:
 	mi = 0
 	mf = 0
 	free_blocks = []
-	blocks = [None]
+	blocks = []
 	index = 0
 	free_memory = 0
 
@@ -116,6 +111,8 @@ class MemoryManager:
 				block_removed = free_block
 
 		if start == -1:
+			if self.free_memory >= size:
+				raise FragmentationError()
 			raise NoFreeBlockError()
 
 		new_block = Block(self.index, start, start + size)
@@ -132,7 +129,7 @@ class MemoryManager:
 	def remove_block(self, id):
 		id = int(id)
 		b = None
-		for block in self.blocks[1:]:
+		for block in self.blocks:
 			if block.id == id:
 				b = block
 				self.blocks.remove(block)
@@ -177,13 +174,26 @@ with open("example.txt", "r", encoding="utf-8") as file:
 
 	memory = MemoryManager(mi, mf)
 	for line in ins:
-		print(line)
+		print("Comando: " + line)
 		command = line.split(" ")
-		if command[0] == "S":
-			memory.add_block(command[1])
-		elif command[0] == "L":
-			memory.remove_block(command[1])
+		try:
+			if command[0] == "S":
+				print("Inserindo bloco")
+				memory.add_block(command[1])
+			elif command[0] == "L":
+				print("Liberando bloco")
+				memory.remove_block(command[1])
+		except FragmentationError as e:
+			print(e.message)
+			print("Estado da memória:")
+			all_blocks = memory.blocks + memory.free_blocks
+			all_blocks.sort()
+			[print(b) for b in all_blocks]
 
-		print("Blocks: " + str(memory.blocks[1:]))
-		print("Free:   " + str(memory.free_blocks))
+		except NoFreeBlockError as e:
+			print(e.message)
 		print()
+
+		#print("Processos:    " + str(memory.blocks))
+		#print("Mem. livre:   " + str(memory.free_blocks))
+		#print()
