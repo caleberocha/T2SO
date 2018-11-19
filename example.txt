@@ -1,12 +1,19 @@
-1     // modo fixo - para o modo aleatório este valor será 2
-100   // mi
-1250  // mf
+1 // modo fixo -
+100 // mi
+1250 // mf
 S 250 // bloco 1
 S 100 // bloco 2
 S 200 // bloco 3
-L 2   // libera bloco 2
+L 2 // libera bloco 2
 S 150 // bloco 4
 S 150 // bloco 5
 S 150 // bloco 6
-L 5 // libera bloco 5
+L 5 
 S 200 // neste momento existe fragmentação
+L 1 // neste momento tem que alocar o bloco 7 que tinha ficado trancado
+S 200 // fragmentação novamente
+L 6 // neste momento pode atender o bloco 8 que tinha ficado trancado
+S 600 // não tem memória suficiente
+L 3
+L 4
+S 700
