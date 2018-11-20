@@ -1,3 +1,4 @@
+import sys
 import re
 from SortedLinkedList import SortedLinkedList
 from Errors import *
@@ -144,53 +145,65 @@ class MemoryManager:
 
 		self.count_free_memory()
 
+def usage():
+	print("Uso: " + sys.argv[0] + " arquivo")
 
-with open("example.txt", "r", encoding="utf-8") as file:
-	line_number = 0
-	regex = re.compile(r"^([0-9]+|[SL] [0-9]+)\s*?(?://.*|$)", re.I)
-	mi = -1
-	mf = -1
-	ins = []
+if len(sys.argv) < 2:
+	usage()
+	quit(1)
 
-	for line in file:
-		m = regex.match(line)
-		if m:
-			line_number += 1
-			l = m.group(1)
-			if line_number == 1:
-				pass
-			elif line_number == 2:
-				mi = l
-			elif line_number == 3:
-				mf = l
-			else:
-				ins.append(l)
+filename = sys.argv[1]
+try:
+	file = open(filename, "r", encoding="utf-8")
+except IOError as e:
+	print(e)
+	quit(1)
 
-	if mi == -1 or mf == -1 or len(ins) < 1:
-		raise NoInstructionsError()
+line_number = 0
+regex = re.compile(r"^([0-9]+|[SL] [0-9]+)\s*?(?://.*|$)", re.I)
+mi = -1
+mf = -1
+ins = []
 
-	memory = MemoryManager(mi, mf)
-	for line in ins:
-		print("Comando: " + line)
-		command = line.split(" ")
-		try:
-			if command[0] == "S":
-				print("Inserindo bloco")
-				memory.add_block(command[1])
-			elif command[0] == "L":
-				print("Liberando bloco")
-				memory.remove_block(command[1])
-		except FragmentationError as e:
-			print(e.message)
-			print("Estado da memória:")
-			[print(b) for b in memory.blocks + memory.free_blocks]
+for line in file:
+	m = regex.match(line)
+	if m:
+		line_number += 1
+		l = m.group(1)
+		if line_number == 1:
+			pass
+		elif line_number == 2:
+			mi = l
+		elif line_number == 3:
+			mf = l
+		else:
+			ins.append(l)
 
-		except NoFreeBlockError as e:
-			print(e.message)
-		print()
+if mi == -1 or mf == -1 or len(ins) < 1:
+	raise NoInstructionsError()
 
-	# print("Blocos:    " + str(memory.blocks))
-	# print("Livre:     " + str(memory.free_blocks))
-	# print("Pendentes: " + str(list(memory.pending_blocks.queue)))
-	# print(str(memory.free_memory) + " bytes livres")
-	# print()
+memory = MemoryManager(mi, mf)
+for line in ins:
+	print("Comando: " + line)
+	command = line.split(" ")
+	try:
+		if command[0] == "S":
+			print("Inserindo bloco")
+			memory.add_block(command[1])
+		elif command[0] == "L":
+			print("Liberando bloco")
+			memory.remove_block(command[1])
+	except FragmentationError as e:
+		print(e.message)
+		print("Estado da memória:")
+		[print(b) for b in memory.blocks + memory.free_blocks]
+
+	except NoFreeBlockError as e:
+		print(e.message)
+	print()
+
+# print("Blocos:    " + str(memory.blocks))
+# print("Livre:     " + str(memory.free_blocks))
+# print("Pendentes: " + str(list(memory.pending_blocks.queue)))
+# print(str(memory.free_memory) + " bytes livres")
+# print()
