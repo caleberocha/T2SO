@@ -1,11 +1,20 @@
 import sys
 import re
+import os
 from SortedLinkedList import SortedLinkedList
 from Errors import *
 from queue import Queue
 
 
 class Block:
+	"""
+	Representação de um bloco de memória.
+
+	Atributos:
+		id       Identificador do bloco
+		start    Endereço do ínicio do bloco
+		end      Endereço do final do bloco
+	"""
 	def __init__(self, id, start, end):
 		self.id = int(id)
 		self.start = int(start)
@@ -30,6 +39,13 @@ class Block:
 
 
 class FreeBlock:
+	"""
+	Representação de um bloco de memória livre.
+	
+	Atributos:
+		start    Endereço do ínicio do bloco
+		end      Endereço do final do bloco
+	"""
 	def __init__(self, start, end):
 		self.start = int(start)
 		self.end = int(end)
@@ -53,6 +69,12 @@ class FreeBlock:
 
 
 class PendingBlock:
+	"""
+		Bloco que está pendente para inclusão da memória.
+		Atributos:
+			index    Identificador do bloco
+			size     Tamanho do bloco
+	"""
 	def __init__(self, index, size):
 		self.index = index
 		self.size = size
@@ -65,6 +87,17 @@ class PendingBlock:
 
 
 class MemoryManager:
+	"""
+	Representação do gerenciador de memória.
+	Atributos:
+		mi                Endereço inicial
+		mf                Endereço final
+		blocks            Blocos ocupados
+		free_blocks       Blocos livres
+		free_memory       Quantidade de memória livre
+		pending_blocks    Blocos pendentes
+		index             Identificador dos blocos. A cada bloco inserido, é incrementado em 1
+	"""
 	def __init__(self, mi, mf):
 		self.mi = int(mi)
 		self.mf = int(mf)
@@ -78,6 +111,9 @@ class MemoryManager:
 		self.pending_blocks = Queue()
 
 	def count_free_memory(self):
+		"""
+		Conta a memória livre e atualiza o atributo free_memory.
+		"""
 		free = 0
 		for block in self.free_blocks:
 			free += (block.end - block.start)
@@ -85,10 +121,14 @@ class MemoryManager:
 		self.free_memory = free
 
 	def add_block(self, size, index=None):
+		"""
+		Aloca espaço e adiciona um bloco à memória.
+		"""
 		if index is None:
 			self.index += 1
 		size = int(size)
 
+		# Verifica se há memória disponível. Se houver, a variável start é atualizada com o endereço inicial do bloco livre
 		block_removed = None
 		start = -1
 		for free_block in self.free_blocks:
@@ -96,27 +136,35 @@ class MemoryManager:
 				start = free_block.start
 				block_removed = free_block
 
+		# Caso não haja memória disponível, adiciona à fila de pendentes e
+		# lança a exceção FragmentationError se houver fragmentação externa, ou NoFreeBlockError se não houver espaço disponível.
 		if start == -1:
-			self.pending_blocks.put(PendingBlock(self.index, size))
+			self.pending_blocks.put(PendingBlock(index or self.index, size))
 			if self.free_memory >= size:
 				raise FragmentationError()
 			raise NoFreeBlockError()
 
-		i = self.index
-		if index is not None:
-			i = index
-		new_block = Block(i, start, start + size)
+		new_block = Block(index or self.index, start, start + size)
 
+		# Adiciona o bloco
 		self.blocks.add(new_block)
+		# Remove o bloco livre
 		self.free_blocks.remove(block_removed)
+		# Cria e insere nenhum, um ou dois blocos livres, dependendo do bloco inserido
 		if block_removed.start < new_block.start:
 			self.free_blocks.add(FreeBlock(block_removed.start, new_block.start))
 		if new_block.end < block_removed.end:
 			self.free_blocks.add(FreeBlock(new_block.end, block_removed.end))
 
+		# Atualiza a quantidade de memória disponível
 		self.count_free_memory()
 
 	def remove_block(self, id):
+		"""
+		Remove um bloco da memória, liberando espaço.
+		"""
+
+		# Procura o bloco
 		id = int(id)
 		b = None
 		for block in self.blocks:
@@ -124,14 +172,14 @@ class MemoryManager:
 				b = block
 				self.blocks.remove(block)
 		if b is not None:
+			# Cria um bloco livre correspondente ao bloco removido
 			self.free_blocks.add(FreeBlock(b.start, b.end))
+		else:
+			# Bloco não encontrado
+			raise BlockNotFoundError()
 
+		# Reorganiza os blocos livres
 		self.optimize_free_blocks()
-
-		if not self.pending_blocks.empty():
-			p = self.pending_blocks.get()
-			print("Inserindo bloco pendente " + str(p))
-			self.add_block(p.size, p.index)
 
 	def optimize_free_blocks(self):
 		aux = self.free_blocks.head
@@ -144,6 +192,33 @@ class MemoryManager:
 			aux = aux.next
 
 		self.count_free_memory()
+
+	def check_pending_blocks(self):
+		# Verifica se há blocos pendentes
+		pending_blocks_count = self.pending_blocks.qsize()
+		if pending_blocks_count > 0:
+			# Tenta inserir todos os blocos pendentes na memória.
+			# Os que não puderem ser inseridos voltam para a fila
+			c = 0
+			while c < pending_blocks_count:
+				p = self.pending_blocks.get()
+				print("Inserindo bloco pendente " + str(p))
+				try:
+					self.add_block(p.size, p.index)
+					print("Bloco inserido")
+				except (FragmentationError, NoFreeBlockError) as e:
+					print(e.message)
+				finally:
+					c += 1
+
+	def print_pending_blocks(self):
+		return os.linesep.join([q.__str__() for q in list(self.pending_blocks.queue)])
+
+	def __str__(self):
+		return os.linesep.join([b.__str__() for b in self.blocks + self.free_blocks])
+
+	def __repr__(self):
+		return self.__str__()
 
 def usage():
 	print("Uso: " + sys.argv[0] + " arquivo")
@@ -190,20 +265,29 @@ for line in ins:
 		if command[0] == "S":
 			print("Inserindo bloco")
 			memory.add_block(command[1])
+			print("Bloco inserido")
 		elif command[0] == "L":
 			print("Liberando bloco")
 			memory.remove_block(command[1])
+			print("Bloco liberado")
+			memory.check_pending_blocks()
 	except FragmentationError as e:
 		print(e.message)
 		print("Estado da memória:")
-		[print(b) for b in memory.blocks + memory.free_blocks]
-
-	except NoFreeBlockError as e:
+		print(memory)
+	except (NoFreeBlockError, BlockNotFoundError) as e:
 		print(e.message)
 	print()
 
-# print("Blocos:    " + str(memory.blocks))
-# print("Livre:     " + str(memory.free_blocks))
-# print("Pendentes: " + str(list(memory.pending_blocks.queue)))
-# print(str(memory.free_memory) + " bytes livres")
-# print()
+	print(memory.blocks)
+	print(memory.free_blocks)
+	print(list(memory.pending_blocks.queue))
+
+print("Estado final da memória:")
+print(memory)
+print()
+print("Blocos pendentes: ")
+print(memory.print_pending_blocks())
+print()
+print(str(memory.free_memory) + " bytes livres")
+print()

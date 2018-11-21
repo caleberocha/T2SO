@@ -1,4 +1,11 @@
 class Node:
+	"""
+	Nodo de uma lista encadeada. Contém um elemento e uma referência para o próximo nodo.
+	
+	Atributos:
+		element    Elemento
+		next       Próximo nodo
+	"""
 	def __init__(self, element):
 		self.element = element
 		self.next = None
@@ -11,20 +18,36 @@ class Node:
 
 
 class SortedLinkedList:
+	"""
+	Lista encadeada ordenada de forma crescente.
+
+	Atributos:
+		head     Nodo inicial
+		count    Quantidade de nodos/elementos
+	"""
 	def __init__(self):
 		self.head = None
 		self.count = 0
 
 	def __len__(self):
+		"""
+		Retorna o tamanho da lista.
+		"""
 		return self.count
 
 	def __iter__(self):
+		"""
+		Iterador da lista.
+		"""
 		current = self.head
 		while current is not None:
 			yield current.element
 			current = current.next
 
 	def __add__(self, other):
+		"""
+		Concatena duas listas.
+		"""
 		new = SortedLinkedList()
 		for n in self:
 			new.add(n)
@@ -33,6 +56,9 @@ class SortedLinkedList:
 		return new
 
 	def get(self, index):
+		"""
+		Retorna o elemento do índice especificado.
+		"""
 		if index < 0 or index > self.count:
 			raise IndexError()
 
@@ -43,6 +69,9 @@ class SortedLinkedList:
 		return aux.element
 
 	def get_next(self, element):
+		"""
+		Retorna o elemento subsequente ao especificado.
+		"""
 		if self.head is None:
 			return None
 
@@ -56,6 +85,9 @@ class SortedLinkedList:
 		return aux.next.element
 
 	def index_of(self, element):
+		"""
+		Retorna o índice do elemento especificado.
+		"""
 		if self.head is None:
 			return -1
 
@@ -70,6 +102,9 @@ class SortedLinkedList:
 		return index
 
 	def add(self, element):
+		"""
+		Adiciona um elemento à lista. Os elementos são mantidos em ordem.
+		"""
 		node = Node(element)
 
 		if self.count == 0:
@@ -94,6 +129,9 @@ class SortedLinkedList:
 		self.count += 1
 
 	def remove(self, element):
+		"""
+		Remove o elemento especificado da lista.
+		"""
 		if self.head is None:
 			return False
 
@@ -114,6 +152,9 @@ class SortedLinkedList:
 		return True
 
 	def remove_by_index(self, index):
+		"""
+		Remove o elemento do índice especificado da lista.
+		"""
 		if index < 0 or index > self.count:
 			raise IndexError()
 

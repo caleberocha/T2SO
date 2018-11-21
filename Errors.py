@@ -1,30 +1,30 @@
-class NoFreeBlockError(Exception):
-	def __init__(self):
-		self.message = "Não há memória suficiente para alocar."
+class Error(Exception):
+	def __init__(self, message):
+		self.message = message
 
 	def __str__(self):
 		return repr(self.message)
 
+class NoFreeBlockError(Error):
+	def __init__(self):
+		self.message = "Não há memória livre suficiente para alocar."
 
-class FragmentationError(Exception):
+
+class FragmentationError(Error):
 	def __init__(self):
 		self.message = "Ocorreu uma fragmentação externa."
 
-	def __str__(self):
-		return repr(self.message)
 
-
-class NoInstructionsError(Exception):
+class NoInstructionsError(Error):
 	def __init__(self):
-		self.value = "Não há instruções."
-
-	def __str__(self):
-		return repr(self.value)
+		self.message = "Não há instruções."
 
 
-class InvalidIntervalError(Exception):
+class InvalidIntervalError(Error):
 	def __init__(self):
-		self.value = "Intervalo de memória inválido."
+		self.message = "Intervalo de memória inválido."
 
-	def __str__(self):
-		return repr(self.value)
+
+class BlockNotFoundError(Error):
+	def __init__(self):
+		self.message = "Bloco não encontrado."
