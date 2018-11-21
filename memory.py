@@ -1,6 +1,7 @@
 import sys
 import re
 import os
+import random
 from SortedLinkedList import SortedLinkedList
 from Errors import *
 from queue import Queue
@@ -220,6 +221,30 @@ class MemoryManager:
 	def __repr__(self):
 		return self.__str__()
 
+
+def generate_block():
+	return "S " + str(random.randrange(50, 1000, 50))
+
+def generate_removal():
+	return "L " + str(random.randint(0, 20))
+
+def generate_random_instructions():
+	"""
+	Gera instruções para o gerenciador de memória aleatoriamente.
+	
+	O espaço de memória a ser criado vai de 0-500 a 600-10000.
+
+	São geradas de 5 a 50 instruções. Cada instrução pode ser "S 50-1000" (com intervalo de 50) ou "L 0-20".
+
+	"""
+	mi = random.randrange(0, 500, 50)
+	mf = random.randrange(600, 10000, 50)
+	ins = []
+	for i in range(random.randint(5, 50)):
+		ins.append(generate_block() if random.randint(0,1) == 1 else generate_removal())
+
+	return (mi, mf, ins)
+
 def usage():
 	print("Uso: " + sys.argv[0] + " arquivo")
 
@@ -239,6 +264,7 @@ regex = re.compile(r"^([0-9]+|[SL] [0-9]+)\s*?(?://.*|$)", re.I)
 mi = -1
 mf = -1
 ins = []
+random_mode = False
 
 for line in file:
 	m = regex.match(line)
@@ -246,13 +272,23 @@ for line in file:
 		line_number += 1
 		l = m.group(1)
 		if line_number == 1:
-			pass
+			if l == str(2):
+				random_mode = True
+				break
 		elif line_number == 2:
 			mi = l
 		elif line_number == 3:
 			mf = l
 		else:
 			ins.append(l)
+			
+if random_mode:
+	mi, mf, ins = generate_random_instructions()
+	print("Comandos gerados aleatoriamente:")
+	print(mi)
+	print(mf)
+	[print(l) for l in ins]
+	print()
 
 if mi == -1 or mf == -1 or len(ins) < 1:
 	raise NoInstructionsError()
@@ -279,9 +315,9 @@ for line in ins:
 		print(e.message)
 	print()
 
-	print(memory.blocks)
-	print(memory.free_blocks)
-	print(list(memory.pending_blocks.queue))
+	# print(memory.blocks)
+	# print(memory.free_blocks)
+	# print(list(memory.pending_blocks.queue))
 
 print("Estado final da memória:")
 print(memory)
